@@ -167,7 +167,7 @@ final class LenteUIView: UIView, UIGestureRecognizerDelegate {
             let p = g.location(in: self)
             zoom.ampliar(por: 2.5, emX: p.x - bounds.midX, y: p.y - bounds.midY)
         }
-        UIView.animate(withDuration: 0.2) { self.aplicarZoom() }
+        aplicarZoom()
     }
 
     @objc private func tocou() { aoTocar?() }

@@ -124,7 +124,7 @@ private struct TelaCheiaDaCamera: View {
             Color.black.ignoresSafeArea()
             LenteComRotulo(rotulo: sessao.camera.nome, distribuidor: video.distribuidor,
                            lente: sessao.camera.duasLentes ? .movel : .inteira, estado: video.estado,
-                           zoom: sessao.zoom, zoomHabilitado: true, cantos: 0, aoTocar: alternarControles)
+                           zoom: sessao.zoom, zoomHabilitado: true, cantos: 0, aoTocar: alternarControles, mostrarRotulo: false)
                 .ignoresSafeArea()
             if controlesVisiveis {
                 sobreposicao
@@ -147,6 +147,16 @@ private struct TelaCheiaDaCamera: View {
                         .background(.ultraThinMaterial, in: Circle())
                 }
                 .accessibilityLabel("Voltar para todas as câmeras")
+                HStack(spacing: 6) {
+                    Circle().fill(video.estado.cor).frame(width: 8, height: 8)
+                    Text(sessao.camera.nome).font(.subheadline.weight(.semibold)).lineLimit(1)
+                }
+                .foregroundStyle(.white)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(.ultraThinMaterial, in: Capsule())
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(sessao.camera.nome), \(video.estado.mensagem ?? "ao vivo")")
                 Spacer()
                 HStack(spacing: 10) {
                     botaoRedondo(modelo.qualidadeHD ? "HD" : "Leve", simbolo: nil, rotulo: "Qualidade: \(modelo.qualidadeHD ? "HD" : "leve")") {

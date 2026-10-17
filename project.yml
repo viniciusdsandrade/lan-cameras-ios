@@ -23,7 +23,7 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
 targets:
-  CamerasDeCasa:
+  CamerasiOS:
     type: application
     platform: iOS
     sources:
@@ -62,32 +62,49 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lancameras.ios
-        PRODUCT_NAME: CamerasDeCasa
+        PRODUCT_NAME: CamerasiOS
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CURRENT_PROJECT_VERSION: "1"
         MARKETING_VERSION: "1.0.0"
 
-  CamerasDeCasaTests:
+  CamerasiOSTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: Tests
     dependencies:
-      - target: CamerasDeCasa
+      - target: CamerasiOS
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.lancameras.ios.testes
 
+  # De ponta a ponta com câmeras de verdade: só rodam com CAMERAS_REAIS=1 (veja o arquivo).
+  CamerasiOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: CamerasiOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.lancameras.ios.testes-de-interface
+
+# Os alvos do iPhone se chamam CamerasiOS: o pacote do Mac já tem um executável chamado
+# CamerasDeCasa, e o Xcode confundia os dois ao procurar o app nos testes de interface.
 schemes:
-  CamerasDeCasa:
+  CamerasiOS:
     build:
       targets:
-        CamerasDeCasa: all
-        CamerasDeCasaTests: [test]
+        CamerasiOS: all
+        CamerasiOSTests: [test]
+        CamerasiOSUITests: [test]
     test:
       targets:
-        - CamerasDeCasaTests
+        - CamerasiOSTests
+        - CamerasiOSUITests
     run:
       config: Debug

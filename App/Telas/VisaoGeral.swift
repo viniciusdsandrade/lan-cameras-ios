@@ -13,11 +13,7 @@ struct VisaoGeral: View {
         ScrollView {
             LazyVGrid(columns: colunas, spacing: 12) {
                 ForEach(modelo.cameras) { camera in
-                    Button { modelo.selecionar(.camera(camera.id)) } label: {
-                        CartaoDaCamera(camera: camera, sessao: modelo.sessoesGerais[camera.id])
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Abrir \(camera.nome)")
+                    CartaoDaCamera(camera: camera, sessao: modelo.sessoesGerais[camera.id])
                 }
             }
             .padding(.horizontal, 12)
@@ -48,25 +44,33 @@ struct VisaoGeral: View {
     }
 }
 
+/// O cartão é um botão que abre a câmera; o estado da conexão vai no valor de acessibilidade
+/// (o VoiceOver diz "Abrir Câmera 1, ao vivo").
 private struct CartaoDaCamera: View {
+    @EnvironmentObject var modelo: ModeloDoApp
     let camera: CameraConfig
     let sessao: SessaoDeVideo?
 
     var body: some View {
         if let sessao {
-            CartaoAoVivo(camera: camera, sessao: sessao)
+            CartaoAoVivo(camera: camera, sessao: sessao) { modelo.selecionar(.camera(camera.id)) }
         } else {
-            ZStack {
-                Color.black
-                Text("pausado").font(.callout).foregroundStyle(.white.opacity(0.7))
+            Button { modelo.selecionar(.camera(camera.id)) } label: {
+                ZStack {
+                    Color.black
+                    Text("pausado").font(.callout).foregroundStyle(.white.opacity(0.7))
+                }
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topLeading) {
+                    Text(camera.nome).font(.caption.weight(.medium)).foregroundStyle(.white)
+                        .padding(.vertical, 4).padding(.horizontal, 9)
+                        .background(.black.opacity(0.6), in: Capsule()).padding(8)
+                }
             }
-            .aspectRatio(16 / 9, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(alignment: .topLeading) {
-                Text(camera.nome).font(.caption.weight(.medium)).foregroundStyle(.white)
-                    .padding(.vertical, 4).padding(.horizontal, 9)
-                    .background(.black.opacity(0.6), in: Capsule()).padding(8)
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Abrir \(camera.nome)")
+            .accessibilityValue("pausado")
         }
     }
 }
@@ -74,11 +78,17 @@ private struct CartaoDaCamera: View {
 private struct CartaoAoVivo: View {
     let camera: CameraConfig
     @ObservedObject var sessao: SessaoDeVideo
+    let abrir: () -> Void
     @StateObject private var semZoom = EstadoDeZoom()
 
     var body: some View {
-        LenteComRotulo(rotulo: camera.nome, distribuidor: sessao.distribuidor,
-                       lente: camera.duasLentes ? .movel : .inteira, estado: sessao.estado, zoom: semZoom)
-            .contentShape(RoundedRectangle(cornerRadius: 10))
+        Button(action: abrir) {
+            LenteComRotulo(rotulo: camera.nome, distribuidor: sessao.distribuidor,
+                           lente: camera.duasLentes ? .movel : .inteira, estado: sessao.estado, zoom: semZoom)
+                .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Abrir \(camera.nome)")
+        .accessibilityValue(sessao.estado.mensagem ?? "ao vivo")
     }
 }

@@ -1,5 +1,5 @@
 import XCTest
-@testable import CamerasDeCasa
+@testable import CamerasiOS
 
 /// O vencimento da assinatura (conta Apple gratuita: 7 dias) lido do perfil dentro do pacote.
 final class AssinaturaTests: XCTestCase {

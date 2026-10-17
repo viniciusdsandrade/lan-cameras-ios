@@ -42,15 +42,15 @@ for runtime in sorted(d, reverse=True):
 [[ -n "$SIMULADOR" ]] || { echo "nenhum simulador de iPhone instalado (Xcode > Settings > Components)" >&2; exit 1; }
 
 echo "==> Compilando para o simulador..."
-xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasDeCasa -destination "id=$SIMULADOR" \
+xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasiOS -destination "id=$SIMULADOR" \
   -derivedDataPath build/DerivedData -quiet build
 
 if [[ $testes -eq 1 ]]; then
   echo "==> Testes do app..."
-  xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasDeCasa -destination "id=$SIMULADOR" \
+  xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasiOS -destination "id=$SIMULADOR" \
     -derivedDataPath build/DerivedData -quiet test
   echo "==> Testes do núcleo no simulador..."
   (cd "$IRMAO" && xcodebuild -scheme CamerasCore-iOS -destination "id=$SIMULADOR" \
     -derivedDataPath "$RAIZ/build/DerivedData-nucleo" -quiet test)
 fi
-echo "==> Pronto: build/DerivedData/Build/Products/Debug-iphonesimulator/CamerasDeCasa.app"
+echo "==> Pronto: build/DerivedData/Build/Products/Debug-iphonesimulator/CamerasiOS.app"

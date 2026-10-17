@@ -33,12 +33,12 @@ command -v xcodegen >/dev/null || { echo "instale o XcodeGen: brew install xcode
 xcodegen generate --quiet
 
 echo "==> Compilando (Release, assinado)..."
-xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasDeCasa -configuration Release \
+xcodebuild -project CamerasDeCasa.xcodeproj -scheme CamerasiOS -configuration Release \
   -destination "id=$UDID" -derivedDataPath build/DerivedData-iphone \
   -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
   DEVELOPMENT_TEAM="$TEAM" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE" -quiet build
 
-APP="build/DerivedData-iphone/Build/Products/Release-iphoneos/CamerasDeCasa.app"
+APP="build/DerivedData-iphone/Build/Products/Release-iphoneos/CamerasiOS.app"
 echo "==> Instalando no iPhone..."
 xcrun devicectl device install app --device "$UDID" "$APP" >/dev/null
 echo "    instalado."

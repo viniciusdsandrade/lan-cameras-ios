@@ -33,6 +33,8 @@ struct LenteComRotulo: View {
     var zoomHabilitado = false
     var cantos: CGFloat = 10
     var aoTocar: (() -> Void)? = nil
+    /// Na tela cheia o nome vai junto dos controles, não por cima do vídeo.
+    var mostrarRotulo = true
 
     var body: some View {
         ZStack {
@@ -50,18 +52,7 @@ struct LenteComRotulo: View {
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .overlay(alignment: .topLeading) {
-            HStack(spacing: 6) {
-                Circle().fill(estado.cor).frame(width: 8, height: 8)
-                Text(rotulo).font(.caption.weight(.medium)).lineLimit(1)
-            }
-            .foregroundStyle(.white)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 9)
-            .background(.black.opacity(0.6), in: Capsule())
-            .padding(8)
-            .allowsHitTesting(false)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(rotulo), \(estado.mensagem ?? "ao vivo")")
+            if mostrarRotulo { rotuloDoEstado }
         }
         .overlay(alignment: .bottomTrailing) {
             if zoomHabilitado, zoom.zoom > 1.01 {
@@ -76,6 +67,21 @@ struct LenteComRotulo: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: cantos))
+    }
+
+    private var rotuloDoEstado: some View {
+            HStack(spacing: 6) {
+                Circle().fill(estado.cor).frame(width: 8, height: 8)
+                Text(rotulo).font(.caption.weight(.medium)).lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 9)
+            .background(.black.opacity(0.6), in: Capsule())
+            .padding(8)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(rotulo), \(estado.mensagem ?? "ao vivo")")
     }
 }
 
@@ -110,6 +116,7 @@ struct BotaoDePressao<Rotulo: View>: View {
             .onDisappear { if pressionado { aoSoltar() } }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(descricao)
+            .accessibilityValue(ativo || pressionado ? "ativo" : "solto")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { aoPressionar(); DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { aoSoltar() } }
     }
@@ -192,7 +199,11 @@ struct AvisoView: View {
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .id(aviso.id)
             .onTapGesture { modelo.aviso = nil }
+            // um elemento só, com o texto do aviso: o VoiceOver lê a frase inteira
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(aviso.texto)
             .accessibilityAddTraits(.isStaticText)
+            .accessibilityIdentifier("aviso")
         }
     }
 
