@@ -58,10 +58,16 @@ struct TelaDeCadastro: View {
         .navigationTitle("Câmeras de Casa")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            guard !jaProcurou else { return }
+            guard !jaProcurou, !hospedandoTestesDeUnidade else { return }
             jaProcurou = true
             modelo.procurarCameras()
         }
+    }
+
+    /// Hospedando testes de unidade, o app não sai procurando câmeras na rede (os testes de
+    /// interface abrem o app como um processo à parte, sem esta variável, e procuram normalmente).
+    private var hospedandoTestesDeUnidade: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 }
 
