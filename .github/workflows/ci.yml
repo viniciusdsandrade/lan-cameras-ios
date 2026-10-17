@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  privacidade:
+    name: Privacidade e segurança
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a varredura olha o histórico inteiro
+      - name: ATS sem exceções
+        run: ./scripts/ci/gate_ats.sh
+      - name: Manifesto de privacidade
+        run: ./scripts/ci/gate_manifesto.sh
+      - name: Nenhum arquivo sensível
+        run: ./scripts/ci/gate_arquivos_sensiveis.sh
+      - name: Nenhum dado pessoal ou de instalação
+        run: bash scripts/verificar-privacidade.sh
+
+  compilar:
+    name: Compilar e testar (simulador)
+    needs: privacidade
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: lan-cameras-ios
+      # o núcleo e a camada de sessão vêm do repositório do Mac, clonado ao lado
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/lan-cameras-mac
+          path: lan-cameras-mac
+      - name: XcodeGen
+        run: brew install xcodegen
+      - name: Compilar e testar
+        working-directory: lan-cameras-ios
+        run: ./scripts/compilar.sh

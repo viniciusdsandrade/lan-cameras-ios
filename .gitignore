@@ -1,0 +1,34 @@
+.DS_Store
+build/
+DerivedData/
+xcuserdata/
+.swiftpm/
+# O projeto do Xcode é gerado pelo XcodeGen a partir do project.yml (xcodegen generate). Fica de
+# fora também porque o Xcode grava nele o time de assinatura escolhido na tela de Signing.
+*.xcodeproj/
+*.xcworkspace/
+
+# Defesa em profundidade: nada de assinatura, credenciais nem dados da instalação.
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.p8
+*.cer
+*.env
+creds*
+cameras.json
+*.jpg
+*.jpeg
+*.heic
+*.h264
+*.h265
+*.hevc
+*.sdp
+*.pcap
+*.mp4
+*.mov
+*.log
+*.xcresult/
+
+# gerado pelo XcodeGen a partir de project.yml
+App/Info.plist
