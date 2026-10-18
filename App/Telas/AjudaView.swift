@@ -20,6 +20,7 @@ struct AjudaView: View {
                 bloco("Rastreio automático", "Com o rastreio ligado, a câmera segue o movimento e depois volta sozinha ao ponto de vigia. Por isso um movimento manual \"se desfaz\": desligue o rastreio se quiser que ela fique onde você deixou.")
                 bloco("Posições salvas", "\"Salvar a posição atual\" guarda para onde a câmera aponta. O app só apaga as posições que ele mesmo criou; as que já vinham na câmera (com cadeado) ficam intactas.")
                 bloco("Som", "\"Ouvir\" liga o som da câmera. \"Segure para falar\" usa o microfone do iPhone enquanto o dedo estiver no botão, e a câmera repete no alto-falante dela; enquanto você fala o som da câmera fica mudo para não dar eco. Há também sons prontos e texto falado. O volume começa em 30%: o alto-falante é alto.")
+                bloco("Senha das câmeras", "Você não digita senha: o app pega o usuário e a senha com a própria câmera. Se o app do fabricante (iCSee, XMEye) trocar a senha dela, ou o roteador mudar o endereço, o app percebe e pega os novos sozinho. Se mesmo assim a imagem não voltar, abra Câmeras (o ícone de ajustes no alto) e toque em Procurar câmeras na rede.")
             }
             Section("Permissões") {
                 bloco("Rede local", "Necessária para achar as câmeras e falar com elas. Libere em Ajustes > Privacidade e Segurança > Rede Local.")
