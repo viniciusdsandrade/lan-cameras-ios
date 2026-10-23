@@ -13,9 +13,11 @@ sessões abertas nelas (`CamerasSessao`); este repositório tem só as telas do 
   digita usuário nem senha. Como o iOS só libera multicast com uma autorização especial da
   Apple, a busca bate na porta do ONVIF de cada endereço da rede, poucos de cada vez.
 - Se o app do fabricante (iCSee, XMEye) trocar a senha de uma câmera, ou o roteador mudar o
-  endereço dela, o app percebe quando ela recusa a senha guardada, pega os dados novos com a
-  própria câmera e reabre só as conexões dela. O vídeo não fica tentando de novo com a senha
-  recusada: as câmeras podem bloquear a conta depois de várias tentativas erradas.
+  endereço dela, o app percebe quando ela recusa a senha guardada ou para de responder no
+  endereço guardado (que pode ter ficado vazio ou com outro aparelho), procura a câmera pelo
+  número de série, pega os dados novos com ela e reabre só as conexões dela. O vídeo não fica
+  tentando de novo com a senha recusada: as câmeras podem bloquear a conta depois de várias
+  tentativas erradas.
 - Vídeo ao vivo (H.264 e H.265, decodificados por hardware), com as duas lentes das câmeras
   que têm duas: a móvel em destaque, a fixa opcional.
 - Em retrato, o vídeo fica fixo no topo e os controles rolam embaixo; deitado, o vídeo ocupa a
