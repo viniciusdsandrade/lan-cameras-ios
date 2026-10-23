@@ -22,6 +22,7 @@ struct VistaDaLente: UIViewRepresentable {
     }
 
     func updateUIView(_ v: LenteUIView, context: Context) {
+        v.conectar(a: distribuidor)
         v.lente = lente
         v.zoomHabilitado = zoomHabilitado
         v.aoTocar = aoTocar
@@ -36,7 +37,7 @@ struct VistaDaLente: UIViewRepresentable {
 final class LenteUIView: UIView, UIGestureRecognizerDelegate {
     private let exibidor = ExibidorDeVideo()
     private let camadaDeZoom = CALayer()
-    private let distribuidor: DistribuidorDeQuadros
+    private var distribuidor: DistribuidorDeQuadros?
     private let zoom: EstadoDeZoom
     private var registro: UUID?
     private var escalaDaPinca: CGFloat = 1
@@ -50,15 +51,13 @@ final class LenteUIView: UIView, UIGestureRecognizerDelegate {
     var aoTocar: (() -> Void)? { didSet { atualizarGestos() } }
 
     init(distribuidor: DistribuidorDeQuadros, zoom: EstadoDeZoom) {
-        self.distribuidor = distribuidor
         self.zoom = zoom
         super.init(frame: .zero)
         backgroundColor = .black
         clipsToBounds = true
         layer.addSublayer(camadaDeZoom)
         camadaDeZoom.addSublayer(exibidor.camada)
-        let exibidor = self.exibidor
-        registro = distribuidor.adicionar { exibidor.exibir($0) }
+        conectar(a: distribuidor)
 
         pinca = UIPinchGestureRecognizer(target: self, action: #selector(pincou(_:)))
         arrasto = UIPanGestureRecognizer(target: self, action: #selector(arrastou(_:)))
@@ -96,9 +95,21 @@ final class LenteUIView: UIView, UIGestureRecognizerDelegate {
 
     required init?(coder: NSCoder) { fatalError("não usado") }
 
+    /// Passa a mostrar os quadros de `novo`. O modelo troca a sessão de vídeo de uma câmera (endereço
+    /// ou senha novos, puxar para atualizar) sem a tela sair do lugar: presa ao distribuidor antigo,
+    /// a lente congelaria no último quadro dele, ou ficaria preta.
+    func conectar(a novo: DistribuidorDeQuadros) {
+        guard novo !== distribuidor else { return }
+        desconectar()
+        distribuidor = novo
+        let exibidor = self.exibidor
+        registro = novo.adicionar { exibidor.exibir($0) }
+    }
+
     func desconectar() {
-        if let r = registro { distribuidor.remover(r) }
+        if let r = registro { distribuidor?.remover(r) }
         registro = nil
+        distribuidor = nil
         exibidor.limpar()
     }
 

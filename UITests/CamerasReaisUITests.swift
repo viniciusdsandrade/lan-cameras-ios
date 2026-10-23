@@ -97,6 +97,24 @@ final class CamerasReaisUITests: XCTestCase {
         wait(for: [semZoom], timeout: 5)
     }
 
+    /// Puxar para atualizar fecha e reabre as sessões das câmeras sem os cartões saírem da tela, como
+    /// quando uma câmera muda de endereço ou de senha: a imagem tem de seguir ao vivo, e não congelar
+    /// no último quadro da sessão antiga.
+    func testPuxarParaAtualizarMantemAImagemAoVivo() throws {
+        app.launch()
+        let cartao = esperarAoVivo(1)
+        sleep(2)
+        try XCTSkipUnless(try imagemMuda(cartao), "a imagem da Câmera 1 está parada demais para medir")
+        // pela margem esquerda, fora dos cartões (que são botões)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.25))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.9)))
+        sleep(1)
+        esperarAoVivo(1)
+        sleep(2)
+        guardar("visao-geral-depois-de-atualizar")
+        XCTAssertTrue(try imagemMuda(cartao), "depois de atualizar, a imagem congelou: a lente ficou presa à sessão antiga")
+    }
+
     // MARK: - Movimento
 
     func testMovimentoParaAoSoltarMedidoNoVideo() throws {
@@ -179,12 +197,16 @@ final class CamerasReaisUITests: XCTestCase {
     }
 
     /// O vídeo da tela, reduzido a 64 x 36 tons de cinza (ruído e compressão somem; movimento não).
-    private func quadroDoVideo() throws -> [UInt8] {
-        let v = video
+    private func quadroDoVideo() throws -> [UInt8] { try quadro(video) }
+
+    /// A imagem de um elemento da tela, reduzida a 64 x 36 tons de cinza. `semOTopo`: fração de cima
+    /// que fica de fora (nos cartões, o nome da câmera).
+    private func quadro(_ e: XCUIElement, semOTopo: CGFloat = 0) throws -> [UInt8] {
         let tela = XCUIScreen.main.screenshot()
         let img = try XCTUnwrap(CGImageSourceCreateWithData(tela.pngRepresentation as CFData, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
         let escala = CGFloat(img.width) / app.frame.width
-        let r = v.frame
+        let f = e.frame
+        let r = CGRect(x: f.minX, y: f.minY + f.height * semOTopo, width: f.width, height: f.height * (1 - semOTopo))
         let recorte = try XCTUnwrap(img.cropping(to: CGRect(x: r.minX * escala, y: r.minY * escala, width: r.width * escala, height: r.height * escala)))
         var px = [UInt8](repeating: 0, count: 64 * 36)
         let ctx = try XCTUnwrap(CGContext(data: &px, width: 64, height: 36, bitsPerComponent: 8, bytesPerRow: 64,
@@ -192,6 +214,19 @@ final class CamerasReaisUITests: XCTestCase {
         ctx.interpolationQuality = .medium
         ctx.draw(recorte, in: CGRect(x: 0, y: 0, width: 64, height: 36))
         return px
+    }
+
+    /// A imagem do cartão muda em algumas leituras seguidas? Um quadro congelado sai idêntico pixel a
+    /// pixel; o vídeo ao vivo, não (ruído do sensor, compressão). Uma lente preta também não muda.
+    private func imagemMuda(_ cartao: XCUIElement, leituras: Int = 4) throws -> Bool {
+        var anterior = try quadro(cartao, semOTopo: 0.3)
+        for _ in 1..<leituras {
+            Thread.sleep(forTimeInterval: 1.5)
+            let atual = try quadro(cartao, semOTopo: 0.3)
+            if atual != anterior { return true }
+            anterior = atual
+        }
+        return false
     }
 
     /// Diferença média entre dois quadros em desvios-padrão: cada quadro é normalizado pela sua
