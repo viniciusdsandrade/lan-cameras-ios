@@ -29,6 +29,8 @@ struct VisaoGeral: View {
                     .accessibilityLabel("Ajuda")
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { modelo.selecionar(.gravacoes) } label: { Image(systemName: "film.stack") }
+                    .accessibilityLabel("Gravações")
                 Button(role: .destructive) { modelo.pararTodas() } label: { Image(systemName: "stop.circle") }
                     .accessibilityLabel("Parar o movimento de todas as câmeras")
                 Button { mostrandoCameras = true } label: { Image(systemName: "slider.horizontal.3") }

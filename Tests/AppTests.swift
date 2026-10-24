@@ -1,5 +1,21 @@
 import XCTest
+import CamerasSessao
 @testable import CamerasiOS
+
+/// A pilha de navegação segue a seleção do modelo: a câmera aberta ou as gravações, por cima da visão geral.
+final class DestinoTests: XCTestCase {
+    func testCaminhoEhAImagemDaSelecao() {
+        XCTAssertEqual(Destino.caminho(.geral), [])
+        XCTAssertEqual(Destino.caminho(.camera("SERIE-FALSA")), [.camera("SERIE-FALSA")])
+        XCTAssertEqual(Destino.caminho(.gravacoes), [.gravacoes])
+    }
+
+    func testVoltarNaPilhaVoltaParaAVisaoGeral() {
+        XCTAssertEqual(Destino.selecao([]), .geral)
+        XCTAssertEqual(Destino.selecao([.gravacoes]), .gravacoes)
+        XCTAssertEqual(Destino.selecao([.camera("SERIE-FALSA")]), .camera("SERIE-FALSA"))
+    }
+}
 
 /// O vencimento da assinatura (conta Apple gratuita: 7 dias) lido do perfil dentro do pacote.
 final class AssinaturaTests: XCTestCase {

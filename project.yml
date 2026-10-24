@@ -43,7 +43,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSLocalNetworkUsageDescription: "O app fala direto com as câmeras pelo Wi-Fi da sua casa: precisa da rede local para achá-las e mostrar o vídeo."
         NSMicrophoneUsageDescription: "Para você falar pelo alto-falante da câmera enquanto segura o botão Falar."
-        NSPhotoLibraryAddUsageDescription: "Para guardar no app Fotos as fotos que você tira das câmeras."
+        NSPhotoLibraryAddUsageDescription: "Para guardar no app Fotos as fotos que você tira das câmeras e os vídeos que você salva das gravações."
         UIRequiresPersistentWiFi: true
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:

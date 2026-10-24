@@ -20,12 +20,13 @@ struct AjudaView: View {
                 bloco("Rastreio automático", "Com o rastreio ligado, a câmera segue o movimento e depois volta sozinha ao ponto de vigia. Por isso um movimento manual \"se desfaz\": desligue o rastreio se quiser que ela fique onde você deixou.")
                 bloco("Posições salvas", "\"Salvar a posição atual\" guarda para onde a câmera aponta. O app só apaga as posições que ele mesmo criou; as que já vinham na câmera (com cadeado) ficam intactas.")
                 bloco("Som", "\"Ouvir\" liga o som da câmera. \"Segure para falar\" usa o microfone do iPhone enquanto o dedo estiver no botão, e a câmera repete no alto-falante dela; enquanto você fala o som da câmera fica mudo para não dar eco. Há também sons prontos e texto falado. O volume começa em 30%: o alto-falante é alto.")
+                bloco("Gravações", "As câmeras gravam sozinhas no cartão de memória quando há movimento, com o som, mesmo com o celular desligado. Em Gravações (o ícone de filme no alto da visão geral), escolha a noite: cada movimento aparece com a foto do instante, e a linha do tempo mostra a noite inteira. Toque num movimento e em ▶ para baixar o vídeo do cartão e assistir; deslize para o lado para passar de um para outro. Compartilhar salva o vídeo no Fotos ou manda para onde quiser.")
                 bloco("Senha das câmeras", "Você não digita senha: o app pega o usuário e a senha com a própria câmera. Se o app do fabricante (iCSee, XMEye) trocar a senha dela, ou o roteador mudar o endereço, o app percebe e pega os novos sozinho. Se mesmo assim a imagem não voltar, abra Câmeras (o ícone de ajustes no alto) e toque em Procurar câmeras na rede.")
             }
             Section("Permissões") {
                 bloco("Rede local", "Necessária para achar as câmeras e falar com elas. Libere em Ajustes > Privacidade e Segurança > Rede Local.")
                 bloco("Microfone", "Só quando você segura \"Falar\".")
-                bloco("Fotos", "Só para adicionar as fotos que você tira; o app não vê as outras.")
+                bloco("Fotos", "Só para adicionar as fotos que você tira e os vídeos que você salva das gravações; o app não vê os outros.")
             }
             Section("Privacidade") {
                 Text("Usuário e senha das câmeras ficam só neste iPhone, dentro do app, fora do backup do iCloud. O app não abre nenhuma porta e só fala com as câmeras do seu Wi-Fi; nada vai para a internet. Em segundo plano ele solta as câmeras na hora e as reabre quando você volta.")

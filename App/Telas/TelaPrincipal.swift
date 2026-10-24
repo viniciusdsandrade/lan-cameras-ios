@@ -2,8 +2,31 @@ import SwiftUI
 import CamerasCore
 import CamerasSessao
 
-/// A raiz do app: o cadastro enquanto não há câmeras; depois, a visão geral com a câmera aberta
-/// por cima (a pilha de navegação segue a seleção do modelo, que decide quais sessões ficam abertas).
+/// Para onde a pilha de navegação vai, por cima da visão geral: uma câmera ou as gravações.
+enum Destino: Hashable {
+    case camera(String)
+    case gravacoes
+
+    static func caminho(_ selecao: ModeloDoApp.Selecao) -> [Destino] {
+        switch selecao {
+        case .geral: return []
+        case .camera(let id): return [.camera(id)]
+        case .gravacoes: return [.gravacoes]
+        }
+    }
+
+    static func selecao(_ caminho: [Destino]) -> ModeloDoApp.Selecao {
+        switch caminho.last {
+        case .camera(let id)?: return .camera(id)
+        case .gravacoes?: return .gravacoes
+        case nil: return .geral
+        }
+    }
+}
+
+/// A raiz do app: o cadastro enquanto não há câmeras; depois, a visão geral com a câmera ou as
+/// gravações por cima (a pilha de navegação segue a seleção do modelo, que decide quais sessões
+/// ficam abertas).
 struct TelaPrincipal: View {
     @EnvironmentObject var modelo: ModeloDoApp
     @State private var mostrandoCameras = false
@@ -16,7 +39,12 @@ struct TelaPrincipal: View {
             } else {
                 NavigationStack(path: caminho) {
                     VisaoGeral(mostrandoCameras: $mostrandoCameras, mostrandoAjuda: $mostrandoAjuda)
-                        .navigationDestination(for: String.self) { id in VisaoDaCamera(idDaCamera: id) }
+                        .navigationDestination(for: Destino.self) { destino in
+                            switch destino {
+                            case .camera(let id): VisaoDaCamera(idDaCamera: id)
+                            case .gravacoes: TelaDeGravacoes(cartoes: modelo.cartoes)
+                            }
+                        }
                 }
             }
         }
@@ -30,13 +58,7 @@ struct TelaPrincipal: View {
         }
     }
 
-    private var caminho: Binding<[String]> {
-        Binding(
-            get: {
-                if case .camera(let id) = modelo.selecao { return [id] }
-                return []
-            },
-            set: { novo in modelo.selecionar(novo.last.map { .camera($0) } ?? .geral) }
-        )
+    private var caminho: Binding<[Destino]> {
+        Binding(get: { Destino.caminho(modelo.selecao) }, set: { modelo.selecionar(Destino.selecao($0)) })
     }
 }
