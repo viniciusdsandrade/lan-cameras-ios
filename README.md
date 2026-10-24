@@ -26,6 +26,10 @@ sessões abertas nelas (`CamerasSessao`); este repositório tem só as telas do 
   luz branca e rastreio automático.
 - Ouvir a câmera, falar por ela segurando o botão, sons prontos e texto falado.
 - Foto da lente atual no app Fotos.
+- Gravações: as câmeras gravam sozinhas no cartão de memória quando há movimento, com o som,
+  mesmo com o celular desligado. O app mostra cada noite numa linha do tempo e numa grade com a
+  foto do instante de cada movimento; o vídeo baixa do cartão e toca no próprio app, e dá para
+  salvá-lo no Fotos ou compartilhá-lo.
 - Em segundo plano o app solta as câmeras na hora (elas aguentam poucas conexões) e as reabre
   quando você volta.
 
@@ -42,6 +46,16 @@ open CamerasDeCasa.xcodeproj   # se quiser abrir no Xcode
 ```
 
 O projeto do Xcode não fica no repositório: ele é gerado a partir do `project.yml`.
+
+A tela de gravações tem um teste de interface que usa as câmeras de mentira do repositório do Mac
+(sem câmera de verdade nem a imagem de nenhuma casa); com elas atendendo, ele roda assim:
+
+```sh
+python3 ../lan-cameras-mac/scripts/camera-falsa.py --pasta /tmp/cameras-falsas &
+TEST_RUNNER_CAMERAS_FALSAS=/tmp/cameras-falsas xcodebuild test -project CamerasDeCasa.xcodeproj \
+  -scheme CamerasiOS -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+  -only-testing:CamerasiOSUITests/GravacoesUITests
+```
 
 ## Instalar no iPhone
 
