@@ -19,10 +19,15 @@ sessões abertas nelas (`CamerasSessao`); este repositório tem só as telas do 
   tentando de novo com a senha recusada: as câmeras podem bloquear a conta depois de várias
   tentativas erradas.
 - Vídeo ao vivo (H.264 e H.265, decodificados por hardware), com as duas lentes das câmeras
-  que têm duas: a móvel em destaque, a fixa opcional.
-- Em retrato, o vídeo fica fixo no topo e os controles rolam embaixo; deitado, o vídeo ocupa a
-  tela inteira e os controles principais ficam por cima (um toque mostra ou esconde).
-- Zoom digital por pinça e toque duplo; movimento (PTZ) segurando as setas; posições salvas;
+  que têm duas: a móvel em destaque, a fixa num quadro menor no canto (opcional).
+- Tela escura, como nos apps de câmeras de vigilância, com o mesmo desenho do app do Mac: na visão
+  geral, uma câmera por linha ou numa grade de duas colunas, com o nome e o estado embaixo de cada
+  vídeo e, em cima, quantas estão sem imagem; deitado, todas cabem na tela. Uma câmera sem imagem diz
+  por quê e tem o botão "Tentar agora".
+- Em retrato, o vídeo fica fixo no topo, com a fileira de ouvir, falar, foto e luz logo abaixo e os
+  controles em cartões que rolam; deitado, o vídeo ocupa a tela inteira e os controles principais
+  ficam por cima (um toque mostra ou esconde).
+- Zoom digital por pinça e toque duplo; movimento (PTZ) segurando as setas do anel; posições salvas;
   luz branca e rastreio automático.
 - Ouvir a câmera, falar por ela segurando o botão, sons prontos e texto falado.
 - Foto da lente atual no app Fotos.
