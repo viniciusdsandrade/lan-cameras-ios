@@ -22,7 +22,7 @@ struct TelaDeGravacoes: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 dias
                 LinhaDoTempo(cartoes: cartoes) { id in abrir(id) }
                     .padding(.horizontal, 16)
@@ -34,7 +34,7 @@ struct TelaDeGravacoes: View {
             cartoes.recarregarEventos()
             cartoes.recarregarEstados()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Tema.fundo.ignoresSafeArea())
         .navigationTitle("Gravações")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -78,9 +78,10 @@ struct TelaDeGravacoes: View {
                     Button { cartoes.dia = d } label: {
                         Text(cartoes.rotulo(do: d))
                             .font(.subheadline.weight(escolhido ? .semibold : .regular))
-                            .padding(.vertical, 7)
-                            .padding(.horizontal, 14)
-                            .background(Capsule().fill(escolhido ? Color.accentColor : Color(.secondarySystemGroupedBackground)))
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 15)
+                            .background(Capsule().fill(escolhido ? Color.accentColor : Tema.cartao))
+                            .overlay(Capsule().strokeBorder(escolhido ? Color.clear : Tema.borda))
                             .foregroundStyle(escolhido ? Color.white : Color.primary)
                     }
                     .buttonStyle(.plain)
@@ -109,7 +110,7 @@ struct TelaDeGravacoes: View {
             ContentUnavailableView("Nada gravado", systemImage: "moon.zzz",
                                    description: Text("Nenhum movimento ficou gravado no cartão nesse período."))
         case .pronto(let lista):
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(cartoes.falhas.sorted(by: { $0.key < $1.key }), id: \.key) { id, _ in
                     Label("\(modelo.camera(id: id)?.nome ?? "Uma câmera") não respondeu", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
@@ -132,19 +133,42 @@ struct TelaDeGravacoes: View {
         }
     }
 
-    /// Como está o cartão de cada câmera.
+    /// Como está o cartão de cada câmera: o espaço usado numa barra e o que ele grava.
     private var rodape: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(modelo.cameras) { c in
-                if case .pronto(let e) = cartoes.estados[c.id] {
-                    Label("\(c.nome): \(FormatoDasGravacoes.cartao(e))", systemImage: "sdcard")
-                        .foregroundStyle(e.gravaPorMovimento == false || !e.temCartao ? .orange : .secondary)
-                }
-            }
-            Text("As câmeras gravam sozinhas no cartão quando há movimento, mesmo com o celular desligado. O que cada uma grava se ajusta no app do fabricante (iCSee, XMEye).")
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Cartões das câmeras", systemImage: "sdcard")
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .padding(.leading, 4)
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(modelo.cameras) { c in
+                    if case .pronto(let e) = cartoes.estados[c.id] {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Circle().fill(CoresDasCameras.cor(c.id, em: modelo.cameras)).frame(width: 8, height: 8)
+                                Text(c.nome).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text(!e.temCartao ? "sem cartão" : (e.gravaPorMovimento == false ? "não grava" : "grava por movimento"))
+                                    .font(.caption)
+                                    .foregroundStyle(e.gravaPorMovimento == false || !e.temCartao ? Color.orange : Color.secondary)
+                            }
+                            if let livre = e.livreMB, let total = e.totalMB, total > 0 {
+                                ProgressView(value: Double(max(0, total - livre)), total: Double(total))
+                                    .tint(livre * 10 < total ? .orange : .accentColor)
+                                Text("\(FormatoDasGravacoes.tamanho(mb: livre)) livres de \(FormatoDasGravacoes.tamanho(mb: total))"
+                                     + (e.detectaPessoas == true ? " · só pessoas" : "") + (e.comSom == true ? " · com som" : ""))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                Nota("As câmeras gravam sozinhas no cartão quando há movimento, mesmo com o celular desligado. O que cada uma grava se ajusta no app do fabricante (iCSee, XMEye).")
+            }
+            .cartao()
         }
-        .font(.caption)
         .padding(.top, 10)
     }
 }
@@ -158,27 +182,32 @@ private struct LinhaDoTempo: View {
     var body: some View {
         let (de, ate) = cartoes.intervalo()
         let eventos: [EventoDoCartao] = { if case .pronto(let l) = cartoes.eventos { return l } else { return [] } }()
-        VStack(alignment: .leading, spacing: 4) {
-            Text(resumo(eventos)).font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(resumo(eventos)).font(.subheadline.weight(.semibold))
+                if case .lendo = cartoes.eventos { ProgressView().controlSize(.small) }
+            }
+            if cartoes.camera == nil { legenda(eventos) }
             GeometryReader { g in
                 let w = g.size.width
                 let total = max(1, ate.timeIntervalSince(de))
                 let x = { (d: Date) in CGFloat(d.timeIntervalSince(de) / total) * w }
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 4).fill(Color(.secondarySystemGroupedBackground)).frame(width: w, height: 22)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Tema.cartao).frame(width: w, height: 30)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Tema.borda).frame(width: w, height: 30)
                     ForEach(marcas(de: de, ate: ate), id: \.self) { h in
-                        Rectangle().fill(Color.primary.opacity(0.12)).frame(width: 1, height: 22).offset(x: x(h))
+                        Rectangle().fill(Color.white.opacity(0.09)).frame(width: 1, height: 30).offset(x: x(h))
                         Text("\(Calendar.current.component(.hour, from: h)) h")
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .fixedSize()
-                            .offset(x: x(h) + 3, y: 25)
+                            .offset(x: x(h) + 3, y: 33)
                     }
                     ForEach(eventos) { e in
-                        RoundedRectangle(cornerRadius: 1.5)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
                             .fill(CoresDasCameras.cor(e.idDaCamera, em: modelo.cameras))
-                            .frame(width: max(3, CGFloat(e.gravacao.duracao / total) * w), height: 22)
-                            .offset(x: x(e.inicio))
+                            .frame(width: max(4, CGFloat(e.gravacao.duracao / total) * w), height: 18)
+                            .offset(x: x(e.inicio), y: 6)
                     }
                 }
                 .contentShape(Rectangle())
@@ -189,10 +218,25 @@ private struct LinhaDoTempo: View {
                     }
                 }
             }
-            .frame(height: 40)
+            .frame(height: 48)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Linha do tempo: \(resumo(eventos))")
+    }
+
+    /// De que câmera é cada cor (só com todas as câmeras juntas).
+    private func legenda(_ eventos: [EventoDoCartao]) -> some View {
+        let comMovimento = Set(eventos.map(\.idDaCamera))
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(modelo.cameras.filter { comMovimento.contains($0.id) }) { c in
+                    HStack(spacing: 5) {
+                        Circle().fill(CoresDasCameras.cor(c.id, em: modelo.cameras)).frame(width: 8, height: 8)
+                        Text(c.nome).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+            }
+        }
     }
 
     /// Uma marca a cada 3 h na noite (a cada 6 h no dia inteiro), nas horas cheias: a tela é estreita.
@@ -232,13 +276,14 @@ private struct CartaoDoEvento: View {
     let baixando: Double?
 
     var body: some View {
+        let forma = RoundedRectangle(cornerRadius: 12, style: .continuous)
         Color.black
             .aspectRatio(evento.duasLentes ? 640.0 / 720.0 : 16.0 / 9.0, contentMode: .fit)
             .overlay {
                 if let imagem {
                     Image(decorative: imagem, scale: 1).resizable().scaledToFill()
                 } else {
-                    Image(systemName: evento.foto == nil ? "video.fill" : "photo")
+                    Image(systemName: evento.foto == nil ? "film" : "photo")
                         .font(.title2)
                         .foregroundStyle(.white.opacity(0.15))
                 }
@@ -247,29 +292,39 @@ private struct CartaoDoEvento: View {
                 LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom).frame(height: 56)
             }
             .overlay(alignment: .bottomLeading) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(FormatoDasGravacoes.hora(evento.inicio))
                         .font(.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit())
-                    HStack(spacing: 4) {
-                        if mostrarCamera {
+                    if mostrarCamera {
+                        HStack(spacing: 4) {
                             Circle().fill(cor).frame(width: 6, height: 6)
                             Text(evento.nomeDaCamera).lineLimit(1)
                         }
-                        Text(FormatoDasGravacoes.duracaoCurta(evento.gravacao.duracao)).monospacedDigit()
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
                     }
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.8))
                 }
                 .foregroundStyle(.white)
                 .padding(8)
             }
             .overlay(alignment: .topTrailing) {
-                if let baixando {
-                    ProgressView(value: baixando).progressViewStyle(.circular).tint(.white)
-                        .padding(5).background(.black.opacity(0.5), in: Circle()).padding(6)
+                Group {
+                    if let baixando {
+                        ProgressView(value: baixando).progressViewStyle(.circular).tint(.white)
+                            .padding(5).background(Tema.sobreVideo, in: Circle())
+                    } else {
+                        Text(FormatoDasGravacoes.duracaoCurta(evento.gravacao.duracao))
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Tema.sobreVideo, in: Capsule())
+                    }
                 }
+                .padding(6)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(forma)
+            .overlay(forma.strokeBorder(Tema.borda))
             .contentShape(Rectangle())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(evento.nomeDaCamera), \(FormatoDasGravacoes.hora(evento.inicio)), \(GravacaoPorMovimento.duracao(evento.gravacao.duracao))")
@@ -354,14 +409,14 @@ private struct DetalheDoEvento: View {
                                 .foregroundStyle(.white)
                                 .frame(width: 76, height: 76)
                                 .background(.black.opacity(0.55), in: Circle())
-                                .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 2))
+                                .overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 2))
                         }
                         .accessibilityLabel("Assistir")
                     }
                 }
             }
             .aspectRatio(e.duasLentes ? 640.0 / 720.0 : 16.0 / 9.0, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Tema.raio, style: .continuous))
             .gesture(DragGesture(minimumDistance: 30).onEnded { v in
                 guard abs(v.translation.width) > abs(v.translation.height) else { return }
                 if v.translation.width < -60 { cartoes.selecionarMaisAntigo() } else if v.translation.width > 60 { cartoes.selecionarMaisNovo() }
@@ -370,7 +425,8 @@ private struct DetalheDoEvento: View {
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
                     Circle().fill(CoresDasCameras.cor(e.idDaCamera, em: modelo.cameras)).frame(width: 8, height: 8)
-                    Text([GravacaoPorMovimento.duracao(e.gravacao.duracao),
+                    Text([e.inicio.formatted(.relative(presentation: .named)),
+                          GravacaoPorMovimento.duracao(e.gravacao.duracao),
                           ByteCountFormatter.string(fromByteCount: Int64(e.gravacao.bytes), countStyle: .file)].joined(separator: " · "))
                 }
                 .font(.callout)
@@ -383,12 +439,22 @@ private struct DetalheDoEvento: View {
             }
             HStack {
                 Button { cartoes.selecionarMaisAntigo() } label: { Label("Anterior", systemImage: "chevron.left") }
+                    .labelStyle(.iconOnly)
+                Spacer()
+                Button {
+                    fechar()
+                    modelo.selecionar(.camera(e.idDaCamera))
+                } label: {
+                    Label("Ver ao vivo", systemImage: "dot.radiowaves.left.and.right").font(.callout.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint("Abre \(e.nomeDaCamera) ao vivo")
                 Spacer()
                 Button { cartoes.selecionarMaisNovo() } label: { Label("Seguinte", systemImage: "chevron.right") }
+                    .labelStyle(.iconOnly)
             }
-            .labelStyle(.iconOnly)
             .font(.title2)
-            .padding(.horizontal, 30)
+            .padding(.horizontal, 24)
             .padding(.bottom, 6)
         }
         .padding(.horizontal, 12)

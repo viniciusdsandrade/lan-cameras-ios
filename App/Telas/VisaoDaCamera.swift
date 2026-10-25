@@ -2,8 +2,9 @@ import SwiftUI
 import CamerasCore
 import CamerasSessao
 
-/// Uma câmera aberta. Em retrato, o vídeo fica fixo no topo e os controles rolam embaixo; em
-/// paisagem, o vídeo ocupa a tela inteira e os controles essenciais ficam por cima.
+/// Uma câmera aberta. Em pé, o vídeo fica fixo no topo e, embaixo dele, a fileira com o que se usa o
+/// tempo todo (ouvir, falar, foto, luz) e os cartões dos controles, que rolam; deitado, o vídeo ocupa a
+/// tela inteira e os controles essenciais flutuam por cima.
 struct VisaoDaCamera: View {
     let idDaCamera: String
     @EnvironmentObject var modelo: ModeloDoApp
@@ -24,6 +25,7 @@ struct VisaoDaCamera: View {
             } else {
                 ProgressView("Abrindo a câmera…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Tema.fundo.ignoresSafeArea())
             }
         }
         .navigationTitle(modelo.camera(id: idDaCamera)?.nome ?? "Câmera")
@@ -66,37 +68,155 @@ private struct RetratoDaCamera: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            LenteComRotulo(rotulo: sessao.camera.duasLentes ? "Lente móvel" : sessao.camera.nome,
-                           distribuidor: video.distribuidor, lente: sessao.camera.duasLentes ? .movel : .inteira,
-                           estado: video.estado, zoom: sessao.zoom, zoomHabilitado: true, cantos: 0)
-                .overlay(alignment: .topTrailing) { informacoes }
+            LenteAoVivo(distribuidor: video.distribuidor, lente: sessao.camera.duasLentes ? .movel : .inteira,
+                        estado: video.estado, zoom: sessao.zoom, zoomHabilitado: true, tentarAgora: { video.tentarAgora() })
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .overlay(alignment: .topLeading) {
+                    if video.estado.aoVivo { SeloAoVivo() }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if sessao.camera.duasLentes, modelo.mostrarLenteFixa, video.estado.aoVivo { lenteFixa }
+                }
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if sessao.camera.duasLentes, modelo.mostrarLenteFixa {
-                        LenteComRotulo(rotulo: "Lente fixa", distribuidor: video.distribuidor, lente: .fixa,
-                                       estado: video.estado, zoom: semZoom)
-                    }
+                    BarraDaCamera(sessao: sessao, aoVivo: video.estado.aoVivo)
                     Controles(sessao: sessao)
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
         }
+        .background(Tema.fundo.ignoresSafeArea())
     }
 
-    @ViewBuilder private var informacoes: some View {
-        if let sinal = sessao.estado?.sinalDoWiFi {
-            Label("\(sinal)%", systemImage: "wifi")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.vertical, 4)
-                .padding(.horizontal, 8)
-                .background(.black.opacity(0.6), in: Capsule())
+    /// A lente fixa, menor, no canto de cima: mostra a cena inteira enquanto a móvel acompanha um ponto.
+    private var lenteFixa: some View {
+        GeometryReader { g in
+            let largura = g.size.width * 0.32
+            let forma = RoundedRectangle(cornerRadius: 8, style: .continuous)
+            LenteAoVivo(distribuidor: video.distribuidor, lente: .fixa, estado: video.estado, zoom: semZoom, compacta: true)
+                .frame(width: largura, height: largura * 9 / 16)
+                .clipShape(forma)
+                .overlay(forma.strokeBorder(.white.opacity(0.4)))
+                .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
                 .padding(8)
-                .accessibilityLabel("Wi-Fi da câmera: \(sinal) de 100")
-                .allowsHitTesting(false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Lente fixa")
         }
+    }
+}
+
+/// "● AO VIVO" no canto do vídeo.
+private struct SeloAoVivo: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(Color.green).frame(width: 8, height: 8)
+            Text("AO VIVO").font(.caption2.weight(.bold)).tracking(0.6)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Tema.sobreVideo, in: Capsule())
+        .padding(10)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// O que se usa o tempo todo, logo embaixo do vídeo, em botões redondos com o nome embaixo (como nos
+/// controles de câmera do sistema): ouvir, falar (enquanto segura), foto, luz e a lente fixa.
+private struct BarraDaCamera: View {
+    @EnvironmentObject var modelo: ModeloDoApp
+    @ObservedObject var sessao: SessaoDaCamera
+    let aoVivo: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            item(sessao.ouvindo ? "Ouvindo" : "Ouvir") {
+                Button { sessao.alternarOuvir() } label: {
+                    Redondo(simbolo: sessao.ouvindo ? "speaker.wave.2.fill" : "speaker.slash.fill", aceso: sessao.ouvindo)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(sessao.ouvindo ? "Ouvindo" : "Ouvir")
+                .accessibilityValue(sessao.ouvindo ? "ligado" : "desligado")
+            }
+            item(sessao.falandoAoVivo ? "Falando" : "Falar") {
+                BotaoDePressao(descricao: "Segure para falar pela câmera", ativo: sessao.falandoAoVivo, corAtiva: .red,
+                               aoPressionar: { sessao.iniciarFalaAoVivo() }, aoSoltar: { sessao.pararFalaAoVivo() }) { aceso in
+                    Redondo(simbolo: aceso ? "mic.fill" : "mic", aceso: aceso, cor: .red)
+                }
+            }
+            item("Foto") {
+                Button { sessao.tirarFoto() } label: { Redondo(simbolo: "camera.fill") }
+                    .buttonStyle(.plain)
+                    .disabled(!aoVivo)
+                    .accessibilityLabel("Tirar foto")
+            }
+            item("Luz") {
+                Menu {
+                    Picker("Luz branca", selection: Binding(
+                        get: { sessao.luzPedida ?? sessao.estado?.luz },
+                        set: { if let m = $0 { sessao.definirLuz(m) } }
+                    )) {
+                        Label("Automática", systemImage: "lightbulb.max").tag(ModoDaLuz?.some(.automatico))
+                        Label("Ligada", systemImage: "lightbulb.fill").tag(ModoDaLuz?.some(.ligada))
+                        Label("Desligada", systemImage: "lightbulb.slash").tag(ModoDaLuz?.some(.desligada))
+                    }
+                } label: {
+                    Redondo(simbolo: iconeDaLuz, aceso: (sessao.luzPedida ?? sessao.estado?.luz) == .ligada, cor: .yellow)
+                }
+                .disabled(sessao.estado?.luz == nil || sessao.ocupadas.contains("luz"))
+                .accessibilityLabel("Luz branca: \(SessaoDaCamera.nome(da: sessao.luzPedida ?? sessao.estado?.luz ?? .automatico))")
+            }
+            if sessao.camera.duasLentes {
+                item("Lente fixa") {
+                    Button { modelo.mostrarLenteFixa.toggle() } label: {
+                        Redondo(simbolo: "pip", aceso: modelo.mostrarLenteFixa)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(modelo.mostrarLenteFixa ? "Esconder a lente fixa" : "Mostrar a lente fixa")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func item<Botao: View>(_ legenda: String, @ViewBuilder _ botao: () -> Botao) -> some View {
+        VStack(spacing: 6) {
+            botao()
+            Text(legenda).font(.caption2).foregroundStyle(.secondary).lineLimit(1).accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var iconeDaLuz: String {
+        switch sessao.luzPedida ?? sessao.estado?.luz ?? .automatico {
+        case .automatico: return "lightbulb.max"
+        case .ligada: return "lightbulb.fill"
+        case .desligada: return "lightbulb.slash"
+        }
+    }
+}
+
+/// Um botão redondo da fileira: aceso (som saindo, microfone aberto, luz ligada) ele se pinta inteiro.
+private struct Redondo: View {
+    let simbolo: String
+    var aceso = false
+    var cor: Color = .accentColor
+    @Environment(\.isEnabled) private var habilitado
+
+    var body: some View {
+        Image(systemName: simbolo)
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(aceso ? (cor == .yellow ? Color.black : Color.white) : Color.primary)
+            .frame(width: 56, height: 56)
+            .background(Circle().fill(aceso ? cor : Tema.cartaoForte))
+            .overlay(Circle().strokeBorder(Tema.borda))
+            .opacity(habilitado ? 1 : 0.4)
+            .contentShape(Circle())
     }
 }
 
@@ -122,9 +242,9 @@ private struct TelaCheiaDaCamera: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            LenteComRotulo(rotulo: sessao.camera.nome, distribuidor: video.distribuidor,
-                           lente: sessao.camera.duasLentes ? .movel : .inteira, estado: video.estado,
-                           zoom: sessao.zoom, zoomHabilitado: true, cantos: 0, aoTocar: alternarControles, mostrarRotulo: false)
+            LenteAoVivo(distribuidor: video.distribuidor, lente: sessao.camera.duasLentes ? .movel : .inteira,
+                        estado: video.estado, zoom: sessao.zoom, zoomHabilitado: true, aoTocar: alternarControles,
+                        tentarAgora: { video.tentarAgora() })
                 .ignoresSafeArea()
             if controlesVisiveis {
                 sobreposicao
@@ -143,18 +263,22 @@ private struct TelaCheiaDaCamera: View {
                 Button { modelo.selecionar(.geral) } label: {
                     Image(systemName: "chevron.backward")
                         .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial, in: Circle())
+                        .fundoDeControles(Circle())
                 }
                 .accessibilityLabel("Voltar para todas as câmeras")
                 HStack(spacing: 6) {
                     Circle().fill(video.estado.cor).frame(width: 8, height: 8)
                     Text(sessao.camera.nome).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    if video.estado.aoVivo {
+                        Text("AO VIVO").font(.caption2.weight(.bold)).tracking(0.6).foregroundStyle(.white.opacity(0.75))
+                    }
                 }
                 .foregroundStyle(.white)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)
-                .background(.ultraThinMaterial, in: Capsule())
+                .fundoDeControles(Capsule())
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(sessao.camera.nome), \(video.estado.mensagem ?? "ao vivo")")
                 Spacer()
@@ -171,11 +295,13 @@ private struct TelaCheiaDaCamera: View {
                         sessao.alternarOuvir()
                     }
                     botaoRedondo(nil, simbolo: "camera.fill", rotulo: "Tirar foto") { sessao.tirarFoto() }
+                        .disabled(!video.estado.aoVivo)
                 }
             }
             Spacer()
             HStack(alignment: .bottom) {
-                ControleDeMovimento(sessao: sessao, lado: 56, fundoTranslucido: true)
+                ControleDirecional(ativas: sessao.direcoesAtivas, segurar: { sessao.segurar($0) }, soltar: { sessao.soltar($0) },
+                                   parar: { sessao.pararMovimento() }, diametro: 164, translucido: true)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 10) {
                     HStack(spacing: 10) {
@@ -204,7 +330,7 @@ private struct TelaCheiaDaCamera: View {
             .foregroundStyle(.white)
             .frame(minWidth: 44, minHeight: 44)
             .padding(.horizontal, texto == nil ? 0 : 6)
-            .background(.ultraThinMaterial, in: Capsule())
+            .fundoDeControles(Capsule())
         }
         .accessibilityLabel(rotulo)
     }

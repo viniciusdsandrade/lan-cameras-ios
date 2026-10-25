@@ -12,7 +12,17 @@ extension FluxoDeVideo.Estado {
         }
     }
 
-    /// Texto que cobre o vídeo enquanto não há imagem; nil quando está ao vivo.
+    /// Em poucas palavras, para os selos.
+    var rotulo: String {
+        switch self {
+        case .aoVivo: return "Ao vivo"
+        case .conectando: return "Conectando…"
+        case .erro: return "Sem imagem"
+        case .parado: return "Parado"
+        }
+    }
+
+    /// O estado para o VoiceOver (e os testes de interface): nil ao vivo, senão o que está acontecendo.
     var mensagem: String? {
         switch self {
         case .aoVivo: return nil
@@ -21,38 +31,34 @@ extension FluxoDeVideo.Estado {
         case .erro(let m): return "sem imagem: \(m)"
         }
     }
+
+    var aoVivo: Bool {
+        if case .aoVivo = self { return true }
+        return false
+    }
 }
 
-/// Uma lente de uma câmera na tela, com o nome e o estado da conexão por cima.
-struct LenteComRotulo: View {
-    let rotulo: String
+/// Uma lente ao vivo: o vídeo e, enquanto não há imagem, o que está acontecendo por cima dele
+/// (conectando, ou por que não há imagem e como tentar de novo), em vez de um quadro preto mudo. Com
+/// zoom, o quanto está ampliado num selo no canto.
+struct LenteAoVivo: View {
     let distribuidor: DistribuidorDeQuadros
     let lente: LenteExibida
     let estado: FluxoDeVideo.Estado
     @ObservedObject var zoom: EstadoDeZoom
     var zoomHabilitado = false
-    var cantos: CGFloat = 10
+    /// Nos cartões da visão geral: textos menores e o motivo em no máximo duas linhas.
+    var compacta = false
     var aoTocar: (() -> Void)? = nil
-    /// Na tela cheia o nome vai junto dos controles, não por cima do vídeo.
-    var mostrarRotulo = true
+    var tentarAgora: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
+            Color.black
             VistaDaLente(distribuidor: distribuidor, lente: lente, zoom: zoom, zoomHabilitado: zoomHabilitado, aoTocar: aoTocar)
-            if let m = estado.mensagem {
-                Text(m)
-                    .font(.callout)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.black.opacity(0.7))
-                    .allowsHitTesting(false)
+            if !estado.aoVivo {
+                SemImagem(estado: estado, compacta: compacta, tentarAgora: tentarAgora)
             }
-        }
-        .aspectRatio(16 / 9, contentMode: .fit)
-        .overlay(alignment: .topLeading) {
-            if mostrarRotulo { rotuloDoEstado }
         }
         .overlay(alignment: .bottomTrailing) {
             if zoomHabilitado, zoom.zoom > 1.01 {
@@ -61,27 +67,50 @@ struct LenteComRotulo: View {
                     .foregroundStyle(.white)
                     .padding(.vertical, 3)
                     .padding(.horizontal, 8)
-                    .background(.black.opacity(0.6), in: Capsule())
+                    .background(Tema.sobreVideo, in: Capsule())
                     .padding(8)
                     .allowsHitTesting(false)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: cantos))
     }
+}
 
-    private var rotuloDoEstado: some View {
-            HStack(spacing: 6) {
-                Circle().fill(estado.cor).frame(width: 8, height: 8)
-                Text(rotulo).font(.caption.weight(.medium)).lineLimit(1)
+private struct SemImagem: View {
+    let estado: FluxoDeVideo.Estado
+    let compacta: Bool
+    let tentarAgora: (() -> Void)?
+
+    var body: some View {
+        VStack(spacing: compacta ? 6 : 10) {
+            switch estado {
+            case .conectando:
+                ProgressView().tint(.white)
+                Text("Conectando…").font(compacta ? .footnote : .callout).foregroundStyle(.white.opacity(0.85))
+            case .erro(let motivo):
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: compacta ? 22 : 30, weight: .semibold))
+                    .foregroundStyle(.red)
+                Text("Sem imagem").font((compacta ? Font.footnote : .callout).weight(.semibold))
+                Text(motivo)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(compacta ? 2 : 3)
+                if let tentarAgora {
+                    Button("Tentar agora", action: tentarAgora)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(.white)
+                }
+            case .parado, .aoVivo:
+                Image(systemName: "pause.circle").font(.system(size: compacta ? 22 : 30)).foregroundStyle(.white.opacity(0.6))
+                Text("Parado").font(compacta ? .footnote : .callout).foregroundStyle(.white.opacity(0.85))
             }
-            .foregroundStyle(.white)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 9)
-            .background(.black.opacity(0.6), in: Capsule())
-            .padding(8)
-            .allowsHitTesting(false)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(rotulo), \(estado.mensagem ?? "ao vivo")")
+        }
+        .foregroundStyle(.white)
+        .padding(compacta ? 10 : 18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black.opacity(0.66))
     }
 }
 
@@ -122,78 +151,125 @@ struct BotaoDePressao<Rotulo: View>: View {
     }
 }
 
-/// Uma seta do controle de movimento: quadrada, grande o bastante para o polegar.
-struct SetaDeMovimento: View {
-    let direcao: Direcao
-    @ObservedObject var sessao: SessaoDaCamera
-    var lado: CGFloat = 64
-    var fundoTranslucido = false
+/// O controle de movimento, como nos apps de câmeras PTZ: um anel com as quatro direções e o botão de
+/// parar no meio. Cada direção é um `BotaoDePressao` próprio, posto sobre a fatia dela e sem encostar nos
+/// outros (quatro fatias do tamanho do anel, empilhadas, disputariam o mesmo toque); o anel em volta é só
+/// desenho, que acende a fatia da direção em movimento.
+struct ControleDirecional: View {
+    let ativas: Set<Direcao>
+    let segurar: (Direcao) -> Void
+    let soltar: (Direcao) -> Void
+    let parar: () -> Void
+    var diametro: CGFloat = 196
+    /// Por cima do vídeo (na tela cheia): fundo translúcido.
+    var translucido = false
+    private let raioInterno: CGFloat = 0.38
 
     var body: some View {
-        BotaoDePressao(descricao: "Mover para \(direcao.nome)", ativo: sessao.direcoesAtivas.contains(direcao),
-                       aoPressionar: { sessao.segurar(direcao) }, aoSoltar: { sessao.soltar(direcao) }) { aceso in
-            Image(systemName: direcao.simbolo)
-                .font(.system(size: lado * 0.34, weight: .semibold))
-                .foregroundStyle(aceso ? .white : .primary)
-                .frame(width: lado, height: lado)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(aceso ? AnyShapeStyle(Color.accentColor) : (fundoTranslucido ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.secondarySystemBackground))))
-                )
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.08)))
-        }
-    }
-}
-
-/// As quatro setas com o botão de parar no meio.
-struct ControleDeMovimento: View {
-    @ObservedObject var sessao: SessaoDaCamera
-    var lado: CGFloat = 64
-    var fundoTranslucido = false
-
-    var body: some View {
-        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
-            GridRow {
-                Color.clear.frame(width: lado, height: lado)
-                SetaDeMovimento(direcao: .cima, sessao: sessao, lado: lado, fundoTranslucido: fundoTranslucido)
-                Color.clear.frame(width: lado, height: lado)
+        ZStack {
+            if translucido {
+                Circle().fill(.clear).fundoDeControles(Circle())
+            } else {
+                Circle().fill(Tema.cartaoForte)
             }
-            GridRow {
-                SetaDeMovimento(direcao: .esquerda, sessao: sessao, lado: lado, fundoTranslucido: fundoTranslucido)
-                Button { sessao.pararMovimento() } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: lado * 0.28, weight: .semibold))
-                        .frame(width: lado, height: lado)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(fundoTranslucido ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(.tertiarySystemBackground))))
+            Circle().strokeBorder(Tema.borda)
+            ForEach(Direcao.allCases, id: \.self) { d in
+                Setor(centro: d.angulo, raioInterno: raioInterno)
+                    .fill(ativas.contains(d) ? Color.accentColor : Color.clear)
+                    .allowsHitTesting(false)
+            }
+            ForEach(Direcao.allCases, id: \.self) { d in
+                BotaoDePressao(descricao: "Mover para \(d.nome)", ativo: ativas.contains(d),
+                               aoPressionar: { segurar(d) }, aoSoltar: { soltar(d) }) { aceso in
+                    Image(systemName: d.chevron)
+                        .font(.system(size: diametro * 0.1, weight: .bold))
+                        .foregroundStyle(aceso ? Color.white : Color.primary.opacity(0.9))
+                        .frame(width: diametro * 0.3, height: diametro * 0.3)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Parar a câmera")
-                SetaDeMovimento(direcao: .direita, sessao: sessao, lado: lado, fundoTranslucido: fundoTranslucido)
+                .position(centro(de: d))
             }
-            GridRow {
-                Color.clear.frame(width: lado, height: lado)
-                SetaDeMovimento(direcao: .baixo, sessao: sessao, lado: lado, fundoTranslucido: fundoTranslucido)
-                Color.clear.frame(width: lado, height: lado)
+            Button(action: parar) {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: diametro * 0.09, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: diametro * 0.32, height: diametro * 0.32)
+                    .background(Circle().fill(Color.white.opacity(0.14)))
+                    .overlay(Circle().strokeBorder(Tema.borda))
+                    .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Parar a câmera")
+        }
+        .frame(width: diametro, height: diametro)
+        .animation(.easeOut(duration: 0.12), value: ativas)
+    }
+
+    /// O meio da fatia de uma direção (onde ficam a seta e o alvo do toque).
+    private func centro(de d: Direcao) -> CGPoint {
+        let raio = diametro / 2 * (1 + raioInterno) / 2
+        let a = d.angulo.radians
+        return CGPoint(x: diametro / 2 + raio * cos(a), y: diametro / 2 + raio * sin(a))
+    }
+}
+
+extension Direcao {
+    /// O meio da fatia no anel (0° é a direita e o ângulo cresce no sentido horário, como na tela).
+    var angulo: Angle {
+        switch self {
+        case .direita: return .degrees(0)
+        case .baixo: return .degrees(90)
+        case .esquerda: return .degrees(180)
+        case .cima: return .degrees(270)
+        }
+    }
+
+    var chevron: String {
+        switch self {
+        case .cima: return "chevron.up"
+        case .baixo: return "chevron.down"
+        case .esquerda: return "chevron.left"
+        case .direita: return "chevron.right"
         }
     }
 }
 
-/// Os avisos curtos no pé da tela (feito, erro, dica).
+/// Um quarto do anel, com uma folga entre as fatias.
+private struct Setor: Shape {
+    let centro: Angle
+    /// O raio do furo do meio, em fração do raio de fora.
+    let raioInterno: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        let c = CGPoint(x: r.midX, y: r.midY)
+        let fora = min(r.width, r.height) / 2
+        let dentro = fora * raioInterno
+        let inicio = centro - .degrees(43), fim = centro + .degrees(43)
+        var p = Path()
+        p.addArc(center: c, radius: fora, startAngle: inicio, endAngle: fim, clockwise: false)
+        p.addArc(center: c, radius: dentro, startAngle: fim, endAngle: inicio, clockwise: true)
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Os avisos curtos no pé da tela (feito, erro, dica). Um toque fecha.
 struct AvisoView: View {
     @EnvironmentObject var modelo: ModeloDoApp
 
     var body: some View {
         if let aviso = modelo.aviso {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: icone(aviso.tipo)).foregroundStyle(cor(aviso.tipo))
+                Image(systemName: icone(aviso.tipo))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(cor(aviso.tipo))
                 Text(aviso.texto).font(.callout).fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 14)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(cor(aviso.tipo).opacity(0.5)))
-            .shadow(radius: 8, y: 2)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: 560)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(cor(aviso.tipo).opacity(0.45)))
+            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -224,21 +300,31 @@ struct AvisoView: View {
     }
 }
 
-/// Um grupo de controles com título, no estilo dos Ajustes.
+/// Um bloco dos controles: o título pequeno em cima e o conteúdo num cartão.
 struct Secao<Conteudo: View>: View {
     let titulo: String
     let simbolo: String
     @ViewBuilder let conteudo: () -> Conteudo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Label(titulo, systemImage: simbolo)
-                .font(.subheadline.weight(.semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .padding(.leading, 4)
             VStack(alignment: .leading, spacing: 12, content: conteudo)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                .cartao()
         }
+    }
+}
+
+/// Texto de apoio pequeno, embaixo de um controle.
+struct Nota: View {
+    let texto: String
+    init(_ texto: String) { self.texto = texto }
+
+    var body: some View {
+        Text(texto).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }

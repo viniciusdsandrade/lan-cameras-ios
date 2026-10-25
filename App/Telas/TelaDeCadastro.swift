@@ -2,8 +2,8 @@ import SwiftUI
 import CamerasCore
 import CamerasSessao
 
-/// A primeira tela, enquanto não há câmeras: procura sozinha ao abrir (é isso que faz o iOS
-/// perguntar pela rede local) e oferece o endereço manual.
+/// A primeira tela, enquanto não há câmeras: o que o app faz, a busca (que começa sozinha ao abrir: é
+/// isso que faz o iOS perguntar pela rede local), o que é preciso para dar certo e o endereço manual.
 struct TelaDeCadastro: View {
     @EnvironmentObject var modelo: ModeloDoApp
     @State private var endereco = ""
@@ -11,15 +11,20 @@ struct TelaDeCadastro: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                Image(systemName: "video.badge.plus")
-                    .font(.system(size: 54))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 40)
-                Text("Nenhuma câmera cadastrada").font(.title2.weight(.semibold))
-                Text("O app procura as câmeras no Wi-Fi da sua casa e pega delas mesmas o que precisa para entrar: você não digita usuário nem senha. O iPhone precisa estar no mesmo Wi-Fi que elas.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+            VStack(spacing: 22) {
+                VStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(LinearGradient(colors: [Color(red: 0.2, green: 0.3, blue: 0.6), Color(red: 0.08, green: 0.12, blue: 0.3)],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(width: 88, height: 88)
+                        .overlay(Image(systemName: "web.camera.fill").font(.system(size: 38)).foregroundStyle(.white.opacity(0.9)))
+                        .accessibilityHidden(true)
+                    Text("Câmeras de Casa").font(.largeTitle.weight(.bold))
+                    Text("Veja e controle as câmeras da sua casa direto pelo Wi-Fi, sem a nuvem do fabricante.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 28)
                 Button {
                     modelo.procurarCameras()
                 } label: {
@@ -27,34 +32,36 @@ struct TelaDeCadastro: View {
                         HStack(spacing: 8) { ProgressView(); Text("Procurando…") }
                             .frame(maxWidth: .infinity)
                     } else {
-                        Label("Procurar câmeras na rede", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
+                        Label("Procurar câmeras na rede", systemImage: "antenna.radiowaves.left.and.right").frame(maxWidth: .infinity)
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(modelo.procurando)
-
-                Text("Se o iPhone perguntar se o app pode procurar aparelhos na rede local, toque em Permitir. Se tocou em Não Permitir, libere em Ajustes > Privacidade e Segurança > Rede Local.")
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-
-                Divider().padding(.vertical, 6)
-                Text("Não achou? Digite o endereço da câmera:").font(.callout).foregroundStyle(.secondary)
-                HStack {
-                    TextField("Endereço IP da câmera", text: $endereco)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("Adicionar") { modelo.adicionarPorEndereco(endereco) }
-                        .buttonStyle(.bordered)
-                        .disabled(endereco.trimmingCharacters(in: .whitespaces).isEmpty || modelo.procurando)
+                VStack(spacing: 10) {
+                    passo("wifi", "Mesmo Wi-Fi", "O iPhone precisa estar no mesmo Wi-Fi que as câmeras.")
+                    passo("key.fill", "Sem digitar senha", "O app pega com a própria câmera o que precisa para entrar.")
+                    passo("network", "Rede local", "Se o iPhone perguntar se o app pode procurar aparelhos na rede local, toque em Permitir. Se tocou em Não Permitir, libere em Ajustes > Privacidade e Segurança > Rede Local.")
                 }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Não achou? Digite o endereço da câmera").font(.subheadline.weight(.semibold))
+                    HStack {
+                        TextField("Endereço IP da câmera", text: $endereco)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("Adicionar") { modelo.adicionarPorEndereco(endereco) }
+                            .buttonStyle(.bordered)
+                            .disabled(endereco.trimmingCharacters(in: .whitespaces).isEmpty || modelo.procurando)
+                    }
+                }
+                .cartao()
             }
-            .padding(24)
+            .padding(20)
         }
         .scrollDismissesKeyboard(.interactively)
+        .background(Tema.fundo.ignoresSafeArea())
         .navigationTitle("Câmeras de Casa")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -62,6 +69,17 @@ struct TelaDeCadastro: View {
             jaProcurou = true
             modelo.procurarCameras()
         }
+    }
+
+    private func passo(_ simbolo: String, _ titulo: String, _ texto: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: simbolo).font(.title3).foregroundStyle(Color.accentColor).frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(titulo).font(.headline)
+                Text(texto).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .cartao()
     }
 
     /// Hospedando testes de unidade, o app não sai procurando câmeras na rede (os testes de
